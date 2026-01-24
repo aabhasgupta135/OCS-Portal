@@ -11,30 +11,35 @@ app.use(cors());
 
 /* ===================== LOGIN ===================== */
 app.post("/api/login", async (req, res) => {
+  console.log("🔐 /api/login hit");
+  console.log("Request body:", req.body);
+
+  const { userid, password_md5 } = req.body;
+
+  if (!userid || !password_md5) {
+    console.log("❌ Missing fields");
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
   try {
-    const { userid, password_md5 } = req.body;
+    const result = await pool.query("SELECT * FROM users WHERE userid = $1", [userid]);
+    const user = result.rows[0];
+    console.log("User found:", user);
 
-    const result = await pool.query(
-      "SELECT userid, role FROM users WHERE userid=$1 AND password_hash=$2",
-      [userid, password_md5]
-    );
-
-    if (!result.rows.length) {
+    if (!user || user.password_hash !== password_md5) {
+      console.log("❌ Invalid credentials");
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const user = result.rows[0];
-    const token = jwt.sign(
-      { userid: user.userid, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
+    const token = jwt.sign({ userid, role: user.role }, process.env.JWT_SECRET);
+    console.log("✅ Login successful");
     res.json({ token, role: user.role });
-  } catch {
+  } catch (err) {
+    console.error("🔥 Server error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 /* ===================== CURRENT USER ===================== */
 app.get("/api/users/me", auth(), (req, res) => {
