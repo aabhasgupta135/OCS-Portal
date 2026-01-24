@@ -305,4 +305,5 @@ app.get("/api/admin/applications", auth("admin"), async (req, res) => {
 /* ===================== START ===================== */
 app.listen(process.env.PORT || 3000, () => {
   console.log("Server running");
+  console.log(process.env.PORT || 3000)
 });
