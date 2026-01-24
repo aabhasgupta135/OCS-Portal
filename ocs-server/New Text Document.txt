@@ -1,1 +1,0 @@
-Database password - "OCS_Tech_Project_REST_API_DATABASE_1414"
