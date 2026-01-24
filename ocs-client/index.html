@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>OCS Recruitment Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: linear-gradient(135deg, #6366f1, #4f46e5);
+      --success: linear-gradient(135deg, #22c55e, #16a34a);
+      --danger: linear-gradient(135deg, #ef4444, #dc2626);
+      --shadow: 0 20px 40px rgba(0,0,0,0.12);
+    }
+
+    body.dark {
+      --bg: #0b1020;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .hidden { display: none; }
+    .container { max-width: 1100px; margin: auto; padding: 30px; }
+
+    /* ---------- LOGIN ---------- */
+    #login {
+      max-width: 380px;
+      margin: 120px auto;
+      padding: 30px;
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      margin: 12px 0;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      background: transparent;
+      color: var(--text);
+    }
+    input {
+      box-sizing: border-box;
+    }
+
+    #login input {
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 4px;
+      color: white;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+
+    .btn-primary { background: var(--primary); }
+    .btn-success { background: var(--success); }
+    .btn-danger { background: var(--danger); }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 18px;
+      margin: 16px 0;
+      box-shadow: var(--shadow);
+      animation: fadeIn .25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      padding: 14px 20px;
+      border-radius: 14px;
+      color: white;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      z-index: 1000;
+    }
+
+    .toast.success { background: #16a34a; }
+    .toast.error { background: #dc2626; }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid #999;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .muted { color: var(--muted); }
+  </style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <h2>OCS Portal</h2>
+  <p class="muted">Sign in to continue</p>
+  <input id="userid" placeholder="User ID">
+  <input id="password" type="password" placeholder="Password">
+  <button id="loginBtn" class="btn-primary">Login</button>
+  <br><br>
+  <button class="theme-toggle" onclick="toggleTheme()">🌙 / ☀️</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden container">
+  <div class="header">
+    <h3 id="welcome"></h3>
+    <div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙 / ☀️</button>
+      <button class="btn-danger" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+
+<script>
+/* ================= ORIGINAL LOGIC (UNCHANGED) ================= */
+const API = "http://localhost:3000/api";
+let token = "", role = "";
+
+const useridEl = document.getElementById("userid");
+const passwordEl = document.getElementById("password");
+const loginBtn = document.getElementById("loginBtn");
+const loginDiv = document.getElementById("login");
+const appDiv = document.getElementById("app");
+const content = document.getElementById("content");
+const welcome = document.getElementById("welcome");
+const toast = document.getElementById("toast");
+
+/* ---------- UTIL ---------- */
+function showToast(msg, type="success") {
+  toast.className = `toast ${type}`;
+  toast.innerText = msg;
+  toast.classList.remove("hidden");
+  setTimeout(() => toast.classList.add("hidden"), 3000);
+}
+
+async function changeStatus(profile, student, status) {
+  const r = await fetch(`${API}/application/change_status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify({ profile_code: profile, entry_number: student, status })
+  });
+  if (!r.ok) {
+    showToast((await r.json()).error, "error");
+    return;
+  }
+  if (role === "admin") loadAdmin();
+  else loadRecruiter();
+}
+
+/* ---------- LOGIN ---------- */
+async function login() {
+  const userid = useridEl.value.trim();
+  const password_md5 = md5(passwordEl.value);
+
+  const res = await fetch(`${API}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userid, password_md5 })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    showToast(data.error, "error");
+    return;
+  }
+
+  token = data.token;
+  role = data.role;
+
+  loginDiv.classList.add("hidden");
+  appDiv.classList.remove("hidden");
+  welcome.innerText = `Welcome ${userid} (${role})`;
+
+  if (role === "student") loadStudent();
+  if (role === "recruiter") loadRecruiter();
+  if (role === "admin") loadAdmin();
+}
+
+loginBtn.onclick = login;
+passwordEl.addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+
+/* ---------- STUDENT ---------- */
+async function loadStudent() {
+  const res = await fetch(`${API}/my-applications`, {
+    headers: { Authorization: "Bearer " + token }
+  });
+  const apps = await res.json();
+
+  // ---- derive state ----
+  const accepted = apps.find(a => a.status === "Accepted");
+  const selected = apps.filter(a => a.status === "Selected");
+
+  // Track profiles the student has already applied to
+  const appliedProfileCodes = new Set(apps.map(a => a.profile_code));
+
+  content.innerHTML = "";
+
+  /* ---------- ACCEPTED SECTION ---------- */
+  if (accepted) {
+    content.innerHTML += `
+      <h3>🎉 Congratulations</h3>
+      <div class="card">
+        <strong>${accepted.company_name}</strong> - ${accepted.designation}<br>
+        <span class="muted">Profile Code: ${accepted.profile_code}</span>
+      </div>
+      <hr>
+    `;
+  }
+
+  /* ---------- SELECTED SECTION ---------- */
+  if (selected.length) {
+    content.innerHTML += "<h3>🎯 Selected</h3>";
+    selected.forEach(a => {
+      content.innerHTML += `
+        <div class="card">
+          <strong>${a.company_name}</strong> - ${a.designation}<br>
+          <span class="muted">Profile Code: ${a.profile_code}</span><br><br>
+          <button class="btn-success" onclick="accept(${a.profile_code})">Accept</button>
+          <button class="btn-danger" onclick="reject(${a.profile_code})">Reject</button>
+        </div>`;
+    });
+    content.innerHTML += "<hr>";
+  }
+
+  /* ---------- PROFILES LIST (ALWAYS SHOWN) ---------- */
+  const p = await fetch(`${API}/profiles`, {
+    headers: { Authorization: "Bearer " + token }
+  });
+  const profiles = await p.json();
+
+  content.innerHTML += "<h3>Profiles</h3>";
+
+  profiles.forEach(p => {
+    let actionButton = "";
+
+    if (accepted) {
+      actionButton = `<button class="btn-primary" disabled>
+        Offer Accepted
+      </button>`;
+    } else if (appliedProfileCodes.has(p.profile_code)) {
+      actionButton = `<button class="btn-primary" disabled>
+        Already Applied
+      </button>`;
+    } else {
+      actionButton = `<button class="btn-primary"
+        onclick="apply(${p.profile_code})">
+        Apply
+      </button>`;
+    }
+
+    content.innerHTML += `
+      <div class="card">
+        <strong>${p.company_name}</strong> - ${p.designation}<br>
+        <span class="muted">
+          Profile Code: ${p.profile_code}
+        </span><br><br>
+        ${actionButton}
+      </div>
+    `;
+  });
+}
+
+async function apply(code) {
+  const r = await fetch(`${API}/apply`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token
+    },
+    body: JSON.stringify({ profile_code: code })
+  });
+  if (!r.ok) showToast((await r.json()).error, "error");
+  loadStudent();
+}
+
+async function accept(code) {
+  await fetch(`${API}/application/accept`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify({ profile_code: code })
+  });
+  loadStudent();
+}
+
+async function reject(code) {
+  await fetch(`${API}/application/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify({ profile_code: code })
+  });
+  loadStudent();
+}
+
+/* ---------- RECRUITER ---------- */
+function companyFromEmail(email) {
+  if (!email || !email.includes("@")) return email;
+
+  const domain = email.split("@")[1];      // e.g. techcorp.com
+  const name = domain.split(".")[0];       // e.g. techcorp
+
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+async function loadRecruiter() {
+  content.innerHTML = `
+    <h3>👤 Recruiter Details</h3>
+    <div class="card">
+      <strong>User ID:</strong> ${useridEl.value}<br>
+      <strong>Role:</strong> Recruiter
+    </div>
+
+    <h3>➕ Create Profile</h3>
+    <div class="card">
+      <strong>Company:</strong> ${companyFromEmail(useridEl.value)}<br><br>
+
+      <input id="designation" placeholder="Designation"><br><br>
+
+      <button class="btn-primary" onclick="createProfile()">
+        Create Profile
+      </button>
+    </div>
+
+    <hr>
+  `;
+  const p = await fetch(`${API}/recruiter/profiles`, {
+    headers: { Authorization: "Bearer " + token }
+  });
+  const profiles = await p.json();
+
+  const a = await fetch(`${API}/recruiter/applications`, {
+    headers: { Authorization: "Bearer " + token }
+  });
+  const apps = await a.json();
+
+  content.innerHTML += "<h3>Recruiter Dashboard</h3>";
+
+  profiles.forEach(p => {
+    content.innerHTML += `<div class="card"><strong>${p.company_name}</strong><br>${p.designation}`;
+    apps.filter(a => a.profile_code === p.profile_code)
+        .forEach(a => {
+          content.innerHTML += `<hr>${a.entry_number} (${a.status})`;
+          if (a.status !== "Accepted") {
+            content.innerHTML += `
+              <br>
+              <button class="btn-success"
+                onclick="changeStatus(${p.profile_code}, '${a.entry_number}', 'Selected')">
+                Select
+              </button>
+              <button class="btn-danger"
+                onclick="changeStatus(${p.profile_code}, '${a.entry_number}', 'Not Selected')">
+                Reject
+              </button>`;
+          }
+        });
+    content.innerHTML += "</div>";
+  });
+}
+
+async function createProfile() {
+  const company_name = companyFromEmail(useridEl.value);
+  const designation = document.getElementById("designation").value.trim();
+
+  if (!company_name || !designation) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  const res = await fetch(`${API}/recruiter/profile`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token
+    },
+    body: JSON.stringify({ company_name, designation })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error);
+    return;
+  }
+
+  alert(`Profile created (Code: ${data.profile_code})`);
+  loadRecruiter(); // refresh list
+}
+
+/* ---------- ADMIN ---------- */
+async function adminCreateProfile() {
+  const recruiter_email = document.getElementById("recruiterSelect").value;
+  const designation = document.getElementById("adminDesignation").value.trim();
+
+  if (!designation) {
+    alert("Please enter designation");
+    return;
+  }
+
+  const res = await fetch(`${API}/admin/profile`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token
+    },
+    body: JSON.stringify({ recruiter_email, designation })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error);
+    return;
+  }
+
+  alert(`Profile created (Code: ${data.profile_code})`);
+  loadAdmin();
+}
+
+async function loadAdmin() {
+  content.innerHTML = `
+    <h3>🛠 Admin Dashboard</h3>
+    <div class="card">
+      <strong>User ID:</strong> Admin<br>
+      <strong>Role:</strong> Admin
+    </div>
+    <hr>
+
+    <h3>➕ Create Profile</h3>
+    <div class="card">
+      <label>Recruiter</label><br>
+      <select id="recruiterSelect"></select><br><br>
+
+      <input id="adminDesignation" placeholder="Designation"><br><br>
+
+      <button class="btn-primary" onclick="adminCreateProfile()">
+        Create Profile
+      </button>
+    </div>
+    <hr>
+
+    <div id="adminApplications"></div>
+    <div id="adminProfiles"></div>
+    <div id="adminUsers"></div>
+  `;
+
+  // Load Recruiters
+  try {
+    const r = await fetch(`${API}/admin/recruiters`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const recruiters = await r.json();
+    const select = document.getElementById("recruiterSelect");
+    recruiters.forEach(r =>
+      select.innerHTML += `<option value="${r.userid}">${r.userid}</option>`
+    );
+  } catch (err) {
+    console.error("Failed to load recruiters", err);
+  }
+
+  // Load Applications
+  try {
+    const appsRes = await fetch(`${API}/admin/applications`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const apps = await appsRes.json();
+
+    if (apps.length) {
+      const appSection = document.getElementById("adminApplications");
+      appSection.innerHTML = "<h3>📄 All Applications</h3>";
+      apps.forEach(a => {
+        appSection.innerHTML += `<div class="card">
+          <strong>${a.company_name}</strong> - ${a.designation} (Profile Code: ${a.profile_code})<br>
+          Student: ${a.entry_number} - ${a.status}`;
+        if (a.status !== "Accepted") {
+          appSection.innerHTML += `
+            <br>
+            <button class="btn-success" onclick="changeStatus(${a.profile_code}, '${a.entry_number}', 'Selected')">Select</button>
+            <button class="btn-danger" onclick="changeStatus(${a.profile_code}, '${a.entry_number}', 'Not Selected')">Reject</button>`;
+        }
+        appSection.innerHTML += `</div>`;
+      });
+    }
+  } catch (err) {
+    console.error("Failed to load applications", err);
+  }
+
+  // Load All Profiles
+  try {
+    const pRes = await fetch(`${API}/profiles`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const allProfiles = await pRes.json();
+
+    if (allProfiles.length) {
+      const profSection = document.getElementById("adminProfiles");
+      profSection.innerHTML = "<h3>🗂 All Profiles</h3>";
+      allProfiles.forEach(p => {
+        profSection.innerHTML += `<div class="card">
+          <strong>${p.company_name}</strong> - ${p.designation}<br>
+          Profile Code: ${p.profile_code}<br>
+          Recruiter: ${p.recruiter_email}
+        </div>`;
+      });
+    }
+  } catch (err) {
+    console.error("Failed to load profiles", err);
+  }
+
+  // Load All Users
+  try {
+    const uRes = await fetch(`${API}/admin/users`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const users = await uRes.json();
+
+    if (users.length) {
+      const userSection = document.getElementById("adminUsers");
+      userSection.innerHTML = "<h3>👥 All Users</h3>";
+      users.forEach(u => {
+        userSection.innerHTML += `<div class="card">
+          <strong>User ID:</strong> ${u.userid}<br>
+          <strong>Role:</strong> ${u.role}
+        </div>`;
+      });
+    }
+  } catch (err) {
+    console.error("Failed to load users", err);
+  }
+
+
+
+}
+
+
+
+/* ---------- THEME ---------- */
+function toggleTheme() {
+  document.body.classList.toggle("dark");
+  localStorage.setItem("theme",
+    document.body.classList.contains("dark") ? "dark" : "light"
+  );
+}
+if (localStorage.getItem("theme") === "dark")
+  document.body.classList.add("dark");
+
+/* ---------- LOGOUT ---------- */
+function logout() { location.reload(); }
+</script>
+
+</body>
+</html>
