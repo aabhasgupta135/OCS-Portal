@@ -1,93 +1,149 @@
-# OCS Recruitment Portal
+# OCS Portal 🎓💼
 
-A simple, role-based web portal for managing campus recruitment. Built with vanilla HTML/CSS/JS (frontend) and Node.js (backend).
+An Online Campus Recruitment Portal that allows students to apply for company profiles, recruiters to manage applications, and admins to oversee the platform. Built using Node.js, Supabase (PostgreSQL), HTML/CSS/JS.
 
 ---
 
-## 🚀 Features
+## 🌐 Live Demo
 
-### 👨‍🎓 Student
-- View eligible job/internship profiles
-- Apply to profiles
-- Track application statuses
-- Accept/Reject offers
+- **Frontend (Vercel):** https://ocs-recruitment-portal.vercel.app/  
+- **Backend (Render):** https://ocs-server-sok3.onrender.com/ *(used by frontend automatically)*
+
+---
+
+## 🔧 Tech Stack
+
+- **Frontend:** Vanilla JS, HTML, CSS  
+- **Backend:** Node.js + Express  
+- **Database:** Supabase PostgreSQL  
+- **Deployment:** Vercel (Frontend) & Render (Backend)  
+
+---
+
+## 🧑‍💼 User Roles
+
+### 👩‍🎓 Student
+- Login with entry number and password.
+- View available profiles with company name, designation, and profile code.
+- Apply to eligible profiles.
+- View selection status (Selected, Accepted, Rejected).
 
 ### 🧑‍💼 Recruiter
-- View their own dashboard and details
-- Post and manage job/internship profiles
-- View applications to their profiles
-- Select/Reject students
+- Login with company email.
+- View recruiter dashboard and create job/internship profiles.
+- View applications submitted to their own profiles.
+- Select or reject students.
 
 ### 🛠 Admin
-- View all users (students & recruiters)
-- Create job/internship profiles for any recruiter
-- View and change any application status
-- View all profiles with management-only fields
+- Login as admin user.
+- View all users, profiles, and applications.
+- Create profiles for any recruiter.
+- Modify application status.
+- View recruiter email and profile codes.
 
 ---
 
-## 🛠 Tech Stack
-- Node.js + Express (Backend)
-- HTML, CSS, JavaScript (Frontend)
-- [blueimp-md5](https://www.npmjs.com/package/blueimp-md5) for hashing passwords
+## 🚀 Local Setup
 
----
+### Prerequisites
+- [Node.js](https://nodejs.org/)
+- Supabase or PostgreSQL database
+- Git installed
 
-## 📂 Project Structure
-```
-├── index.js           # Main server file
-├── auth.js            # Authentication logic
-├── db.js              # In-memory database / mock data
-├── public/
-│   ├── index.html     # Frontend UI
-│   └── style.css      # [optional] custom styles
-├── .env               # Configurable environment variables
-```
+### 1. Clone Repository
 
----
-
-## ⚙️ Setup & Run Locally
-
-### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/ocs-portal.git
-cd ocs-portal
+git clone https://github.com/<your-username>/OCS-Portal.git
+cd OCS-Portal
 ```
 
-### 2. Install dependencies
+### 2. Install Backend Dependencies
+
 ```bash
+cd ocs-server
 npm install
 ```
 
-### 3. Create `.env` file
-```
+### 3. Set Environment Variables
+
+Create a `.env` file in the `ocs-server` folder:
+
+```env
+DATABASE_URL=your_supabase_connection_string
 PORT=3000
 ```
 
-### 4. Start the server
+Make sure this file is added to `.gitignore`.
+
+### 4. Start Backend Server
+
 ```bash
 node index.js
 ```
 
-### 5. Open in browser
-Visit: [http://localhost:3000](http://localhost:3000)
+### 5. Launch Frontend
+
+Open `index.html` directly in your browser or use a simple server like:
+
+```bash
+npx serve .
+```
 
 ---
 
-## 📋 Default Users (for testing)
-| User ID              | Password | Role      |
-|----------------------|----------|-----------|
-| student1             | 123      | student   |
-| recruiter1@acme.com  | 123      | recruiter |
-| admin                | 123      | admin     |
+## 🧪 Sample Data Reset
+
+To reset and reinitialize your database:
+
+1. Run the SQL script provided in `reset.sql` (if present).
+2. Or manually clear all tables and rerun the setup SQL.
 
 ---
 
-## 🚧 Future Enhancements
-- Persistent database (MongoDB/PostgreSQL)
-- File upload for resumes
-- Admin analytics dashboard
-- Email notifications for updates
+## 🌍 Deployment
+
+### Frontend on Vercel
+
+- Connect GitHub repo
+- Set root directory to `/` (or wherever `index.html` is)
+- Deploy!
+
+### Backend on Render
+
+- Create a new Web Service
+- Use `index.js` as entry
+- Add `DATABASE_URL` to environment variables
+- Deploy!
 
 ---
 
+## 📁 Folder Structure
+
+```
+OCS-Portal/
+├── index.html         # Frontend
+└── ocs-server/
+    ├── index.js       # Express backend
+    ├── db.js          # PostgreSQL connection
+    ├── auth.js        # Auth middleware
+    └── .env           # DB credentials (excluded from Git)
+```
+
+---
+
+## ✅ Features Completed
+
+- [x] Student application flow
+- [x] Recruiter profile & selection
+- [x] Admin control over all data
+- [x] Password hashing (MD5)
+- [x] Token-based auth
+- [x] Responsive UI with dark mode
+- [x] Deployed on Vercel & Render
+
+---
+
+## ✍️ Author
+
+Made by Aabhas Gupta  
+GitHub: [@aabhasgupta135](https://github.com/aabhasgupta135)
