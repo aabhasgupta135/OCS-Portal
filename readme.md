@@ -43,6 +43,34 @@ An Online Campus Recruitment Portal that allows students to apply for company pr
 
 ---
 
+## 📡 API Endpoints
+
+### 🔐 Authentication
+- `POST /api/login` — Authenticate user and return JWT token
+
+### 🎓 Student
+- `GET /api/my-applications` — Get student's application statuses
+- `POST /api/apply` — Apply to a profile
+- `POST /api/application/accept` — Accept an offer
+- `POST /api/application/reject` — Reject an offer
+
+### 🧑‍💼 Recruiter
+- `GET /api/recruiter/profiles` — Get recruiter’s profiles
+- `GET /api/recruiter/applications` — Get applications for recruiter’s profiles
+- `POST /api/recruiter/profile` — Create a new profile
+
+### 🛠 Admin
+- `GET /api/admin/users` — View all users
+- `GET /api/admin/recruiters` — Get list of recruiter emails
+- `POST /api/admin/profile` — Create profile for any recruiter
+- `GET /api/admin/applications` — View all applications
+- `POST /api/application/change_status` — Change application status
+
+### 📁 Shared
+- `GET /api/profiles` — List all profiles
+
+---
+
 ## 🚀 Local Setup
 
 ### Prerequisites
